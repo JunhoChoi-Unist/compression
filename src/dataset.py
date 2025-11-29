@@ -21,16 +21,19 @@ class IntraTSDFDataset(IterableDataset):
             for npzfile in (SDF_ROOT / dataset / scene).glob("*.npz")
             if npzfile.name != "common.npz"
         ]
-        if mode == "train":
+        if mode == "test":
             self.npzfiles = sorted(self.npzfiles)
+            self.npzfiles = self.npzfiles[:1]
         else:
+            self.npzfiles = sorted(self.npzfiles)
+            self.npzfiles = self.npzfiles[:1]
             random.shuffle(self.npzfiles)
 
         with np.load(SDF_ROOT / dataset / scene / "common.npz") as common:
             self.voxel_size = common["voxel_size"].astype(np.float32)
         self.sdf_trunc = np.linalg.norm(self.voxel_size)
 
-    def _blockify(self, sdf, block_size=8):
+    def _blockify(self, sdf, block_size=64):
         # This should return an iterable of blocks
         D, H, W = sdf.shape
 
@@ -71,11 +74,17 @@ class IntraTSDFDataset(IterableDataset):
                 blocks = blocks.reshape(
                     1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
                 )
+                min_bound = npzdata["min_bound"].astype(np.float32)
+                for block in blocks:
+                    yield torch.from_numpy(block), min_bound, npzfile.stem
             else:
                 blocks = blocks.reshape(-1, 1, block_sizeD, block_sizeH, block_sizeW)
-
-            for block in blocks:
-                yield torch.from_numpy(block)
+                for block in blocks:
+                    # check if the block contains any surface voxels
+                    if block.max() * block.min() <= 0:
+                        yield torch.from_numpy(block)
+                    else:
+                        continue
 
 
 if __name__ == "__main__":
@@ -83,5 +92,6 @@ if __name__ == "__main__":
     dataset = IntraTSDFDataset(mode="test")
     dataloader = DataLoader(dataset, batch_size=1, num_workers=0)
     for batch in dataloader:
-        print(batch.shape)
-        break
+        block, min_bound, filename = batch
+        print(block.shape)
+    print("Done")

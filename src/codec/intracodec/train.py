@@ -18,7 +18,7 @@ DEVICE = torch.device(
     else "cpu"
 )
 EPOCHS = 100
-BATCH_SIZE = 256
+BATCH_SIZE = 8
 SAVE_DIR = pathlib.Path("checkpoints/intracodec")
 
 if __name__ == "__main__":
@@ -27,7 +27,21 @@ if __name__ == "__main__":
     )
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, num_workers=4)
 
-    model = HyperPrior(N=64, M=32).to(DEVICE)
+    checkpoint_path = "None"
+    # checkpoint_path = "checkpoints/intracodec/HyperPrior_ep012.pth"
+    if pathlib.Path(checkpoint_path).exists():
+        checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
+        model = HyperPrior.from_state_dict(checkpoint["model_state_dict"]).to(DEVICE)
+        best_loss = checkpoint["loss"]
+        continue_epoch = checkpoint["epoch"] + 1
+        print(
+            f"Resuming training from epoch {continue_epoch} with loss {best_loss:.3e}"
+        )
+    else:
+        model = HyperPrior(N=64, M=32).to(DEVICE)
+        best_loss = float("inf")
+        continue_epoch = 0
+
     parameters = set(
         p for n, p in model.named_parameters() if not n.endswith(".quantiles")
     )
@@ -37,14 +51,20 @@ if __name__ == "__main__":
     optimizer = optim.Adam(parameters, lr=1e-4)
     aux_optimizer = optim.Adam(aux_parameters, lr=1e-3)
 
-    best_loss = float("inf")
-    for epoch in range(EPOCHS):
+    for epoch in range(continue_epoch, EPOCHS):
         epoch_loss = 0.0
         epoch_distortion_loss = 0.0
         epoch_rate_loss = 0.0
         epoch_sign_loss = 0.0
         for batch_idx, sdf_blocks in enumerate(
-            tqdm(dataloader, total=len(dataset.npzfiles) * 20 * 50 * 128 // BATCH_SIZE)
+            tqdm(
+                dataloader,
+                total=len(dataset.npzfiles)
+                * (200 // 64)
+                * (400 // 64)
+                * (200 // 64)
+                // BATCH_SIZE,
+            )
         ):
             x = sdf_blocks.to(DEVICE)
             optimizer.zero_grad()
@@ -71,7 +91,7 @@ if __name__ == "__main__":
             rate_loss += torch.log(z_likelihoods).sum() / (-math.log(2) * num_voxels)
             is_positive = (x >= 0).squeeze(1).long()
             sign_rate = F.cross_entropy(sign_hat, is_positive, reduction="sum") / (
-                -math.log(2) * num_voxels
+                math.log(2) * num_voxels
             )
             rp = 7
             mu = rp * math.log10(200000) / 11
@@ -88,10 +108,10 @@ if __name__ == "__main__":
             aux_loss.backward()
             aux_optimizer.step()
 
-        epoch_loss /= len(dataloader)
-        epoch_distortion_loss /= len(dataloader)
-        epoch_rate_loss /= len(dataloader)
-        epoch_sign_loss /= len(dataloader)
+        epoch_loss /= batch_idx
+        epoch_distortion_loss /= batch_idx
+        epoch_rate_loss /= batch_idx
+        epoch_sign_loss /= batch_idx
         print(
             f"Epoch {epoch}: distortion={epoch_distortion_loss:.3e}, rate={epoch_rate_loss:.6f}, sign={epoch_sign_loss:.6f}"
         )

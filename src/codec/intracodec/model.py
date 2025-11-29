@@ -93,16 +93,16 @@ class HyperPrior(CompressionModel):
             GDN(N),
             conv(N, N),
             GDN(N),
-            # conv(N, N),
-            # GDN(N),
+            conv(N, N),
+            GDN(N),
             conv(N, M),
         )
 
         self.g_s = nn.Sequential(
             deconv(M, N),
             GDN(N, inverse=True),
-            # deconv(N, N),
-            # GDN(N, inverse=True),
+            deconv(N, N),
+            GDN(N, inverse=True),
             deconv(N, N),
             GDN(N, inverse=True),
         )
@@ -111,35 +111,35 @@ class HyperPrior(CompressionModel):
 
         self.h_a = nn.Sequential(
             conv(M, N, stride=1, kernel_size=3),
-            nn.ReLU(inplace=True),
+            nn.LeakyReLU(inplace=True),
             conv(N, N),
-            nn.ReLU(inplace=True),
+            nn.LeakyReLU(inplace=True),
             conv(N, N),
         )
 
         self.h_s = nn.Sequential(
-            deconv(N, N),
-            nn.ReLU(inplace=True),
-            deconv(N, N),
-            nn.ReLU(inplace=True),
-            conv(N, M, stride=1, kernel_size=3),
-            nn.ReLU(inplace=True),
+            deconv(N, M),
+            nn.LeakyReLU(inplace=True),
+            deconv(M, M * 3 // 2),
+            nn.LeakyReLU(inplace=True),
+            conv(M * 3 // 2, M * 2, stride=1, kernel_size=3),
         )
 
         self.gaussian_conditional = GaussianConditional(None)
         self.N = int(N)
         self.M = int(M)
 
-    # @property
-    # def downsampling_factor(self) -> int:
-    #     return 2 ** (4 + 2)
+    @property
+    def downsampling_factor(self) -> int:
+        return 2 ** (4 + 2)
 
     def forward(self, x):
         y = self.g_a(x)
-        z = self.h_a(torch.abs(y))
+        z = self.h_a(y)
         z_hat, z_likelihoods = self.entropy_bottleneck(z)
-        scales_hat = self.h_s(z_hat)
-        y_hat, y_likelihoods = self.gaussian_conditional(y, scales_hat)
+        gaussian_params = self.h_s(z_hat)
+        scales_hat, means_hat = gaussian_params.chunk(2, 1)
+        y_hat, y_likelihoods = self.gaussian_conditional(y, scales_hat, means=means_hat)
         head = self.g_s(y_hat)
         magn_hat = self.head_magn(head).clamp(-1, 1)
         sign_hat = self.head_sign(head)
@@ -161,24 +161,30 @@ class HyperPrior(CompressionModel):
 
     def compress(self, x):
         y = self.g_a(x)
-        z = self.h_a(torch.abs(y))
+        z = self.h_a(y)
 
         z_strings = self.entropy_bottleneck.compress(z)
         z_hat = self.entropy_bottleneck.decompress(z_strings, z.size()[-3:])
 
-        scales_hat = self.h_s(z_hat)
+        gaussian_params = self.h_s(z_hat)
+        scales_hat, means_hat = gaussian_params.chunk(2, 1)
         indexes = self.gaussian_conditional.build_indexes(scales_hat)
-        y_strings = self.gaussian_conditional.compress(y, indexes)
+        y_strings = self.gaussian_conditional.compress(y, indexes, means=means_hat)
         return {"strings": [y_strings, z_strings], "shape": z.size()[-3:]}
 
     def decompress(self, strings, shape):
         assert isinstance(strings, list) and len(strings) == 2
         z_hat = self.entropy_bottleneck.decompress(strings[1], shape)
-        scales_hat = self.h_s(z_hat)
+        gaussian_params = self.h_s(z_hat)
+        scales_hat, means_hat = gaussian_params.chunk(2, 1)
         indexes = self.gaussian_conditional.build_indexes(scales_hat)
-        y_hat = self.gaussian_conditional.decompress(strings[0], indexes, z_hat.dtype)
+        y_hat = self.gaussian_conditional.decompress(
+            strings[0], indexes, means=means_hat
+        )
         head = self.g_s(y_hat)
         magn_hat = self.head_magn(head).clamp(-1, 1)
         sign_hat = self.head_sign(head)
+
+        x_hat = torch.abs(magn_hat)  #! * torch.sign(x)
 
         return {"x_hat": x_hat}

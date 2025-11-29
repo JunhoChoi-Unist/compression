@@ -337,13 +337,14 @@ wheels = [
 [[package]]
 name = "compression"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "compressai" },
     { name = "open3d" },
     { name = "pysdf" },
     { name = "scikit-image" },
     { name = "torch" },
+    { name = "torchac" },
     { name = "torchvision" },
     { name = "tqdm" },
     { name = "trimesh" },
@@ -361,6 +362,7 @@ requires-dist = [
     { name = "pysdf", specifier = ">=0.1.9" },
     { name = "scikit-image", specifier = ">=0.25.2" },
     { name = "torch", specifier = "==2.4.1" },
+    { name = "torchac", specifier = ">=0.9.3" },
     { name = "torchvision", specifier = "==0.19.1" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "trimesh", specifier = ">=4.10.0" },
@@ -2279,6 +2281,14 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/75/63/b210152635902da7fe79fcdd16517fae108f457a0ed22c737e702a9afbae/torch_geometric-2.7.0.tar.gz", hash = "sha256:f9099e4aece1a9f618c84dbaac33a77f43139736698c7e8bddf3301ef1f2e8d4", size = 876725, upload-time = "2025-10-15T20:48:03.443Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/d3/4dffd7300500465e0b4a2ae917dcb2ce771de0b9a772670365799a27c024/torch_geometric-2.7.0-py3-none-any.whl", hash = "sha256:6e0cd3ad824d484651ef5d308fc66c687bfcf5ba040d56d1e0fe0f81f365e292", size = 1275346, upload-time = "2025-10-15T20:48:01.949Z" },
+]
+
+[[package]]
+name = "torchac"
+version = "0.9.3"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/e7/a3be37b21dc79978901cbb1aa60327e4d973d195de8969c285aa4e57398a/torchac-0.9.3-py3-none-any.whl", hash = "sha256:ab4eedbe230c677ff076e07142ce611c6a76185723c0f41bd014e6893678f5c9", size = 22337, upload-time = "2020-11-17T14:07:35.233Z" },
 ]
 
 [[package]]

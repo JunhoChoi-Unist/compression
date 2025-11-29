@@ -14,6 +14,7 @@ dependencies = [
     "pysdf>=0.1.9",
     "scikit-image>=0.25.2",
     "torch==2.4.1",
+    "torchac>=0.9.3",
     "torchvision==0.19.1",
     "tqdm>=4.67.1",
     "trimesh>=4.10.0",
