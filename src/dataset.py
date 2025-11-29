@@ -1,4 +1,5 @@
 import pathlib
+import random
 
 import numpy as np
 import torch
@@ -8,19 +9,25 @@ SDF_ROOT = pathlib.Path("data/SDF/5mm")
 
 
 class IntraTSDFDataset(IterableDataset):
-    def __init__(self, dataset: str = "MPEG", scene: str = "longdress_voxelized"):
+    def __init__(
+        self, dataset: str = "MPEG", scene: str = "longdress_voxelized", mode="train"
+    ):
         super().__init__()
+        self.mode = mode
         self.dataset = dataset
         self.scene = scene
-        self.npzfiles = sorted(
-            [
-                npzfile
-                for npzfile in (SDF_ROOT / dataset / scene).glob("*.npz")
-                if npzfile.name != "common.npz"
-            ]
-        )
-        self.common = np.load(SDF_ROOT / dataset / scene / "common.npz")
-        self.voxel_size = self.common["voxel_size"].astype(np.float32)
+        self.npzfiles = [
+            npzfile
+            for npzfile in (SDF_ROOT / dataset / scene).glob("*.npz")
+            if npzfile.name != "common.npz"
+        ]
+        if mode == "train":
+            self.npzfiles = sorted(self.npzfiles)
+        else:
+            random.shuffle(self.npzfiles)
+
+        with np.load(SDF_ROOT / dataset / scene / "common.npz") as common:
+            self.voxel_size = common["voxel_size"].astype(np.float32)
         self.sdf_trunc = np.linalg.norm(self.voxel_size)
 
     def _blockify(self, sdf, block_size=8):
@@ -41,18 +48,14 @@ class IntraTSDFDataset(IterableDataset):
 
         D, H, W = sdf.shape
 
-        blocks = (
-            sdf.reshape(
-                D // block_size,
-                block_size,
-                H // block_size,
-                block_size,
-                W // block_size,
-                block_size,
-            )
-            .transpose(0, 2, 4, 1, 3, 5)
-            .reshape(-1, 1, block_size, block_size, block_size)
-        )
+        blocks = sdf.reshape(
+            D // block_size,
+            block_size,
+            H // block_size,
+            block_size,
+            W // block_size,
+            block_size,
+        ).transpose(0, 2, 4, 1, 3, 5)
         return blocks
 
     def __iter__(self):
@@ -62,16 +65,23 @@ class IntraTSDFDataset(IterableDataset):
             sdf = npzdata["sdf"].astype(np.float32)
             sdf = (sdf / self.sdf_trunc).clip(-1.0, 1.0)
 
-            # _blockify returns an array where the first dimension is the sample dimension
             blocks = self._blockify(sdf)
+            nD, nH, nW, block_sizeD, block_sizeH, block_sizeW = blocks.shape
+            if self.mode == "test":
+                blocks = blocks.reshape(
+                    1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
+                )
+            else:
+                blocks = blocks.reshape(-1, 1, block_sizeD, block_sizeH, block_sizeW)
 
             for block in blocks:
                 yield torch.from_numpy(block)
 
 
 if __name__ == "__main__":
-    dataset = IntraTSDFDataset()
-    dataloader = DataLoader(dataset, batch_size=4, num_workers=0)
+    # set batch size to 1 for testing
+    dataset = IntraTSDFDataset(mode="test")
+    dataloader = DataLoader(dataset, batch_size=1, num_workers=0)
     for batch in dataloader:
         print(batch.shape)
         break

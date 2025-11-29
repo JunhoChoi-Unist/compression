@@ -1,0 +1,114 @@
+import math
+import pathlib
+
+import torch
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from codec.intracodec.model import HyperPrior
+from dataset import IntraTSDFDataset
+
+DEVICE = torch.device(
+    "cuda"
+    if torch.cuda.is_available()
+    # else "mps"    # disable due to no support on deconv
+    # if torch.backends.mps.is_available()
+    else "cpu"
+)
+EPOCHS = 100
+BATCH_SIZE = 256
+SAVE_DIR = pathlib.Path("checkpoints/intracodec")
+
+if __name__ == "__main__":
+    dataset = IntraTSDFDataset(
+        dataset="MPEG", scene="longdress_voxelized", mode="train"
+    )
+    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, num_workers=4)
+
+    model = HyperPrior(N=64, M=32).to(DEVICE)
+    parameters = set(
+        p for n, p in model.named_parameters() if not n.endswith(".quantiles")
+    )
+    aux_parameters = set(
+        p for n, p in model.named_parameters() if n.endswith(".quantiles")
+    )
+    optimizer = optim.Adam(parameters, lr=1e-4)
+    aux_optimizer = optim.Adam(aux_parameters, lr=1e-3)
+
+    best_loss = float("inf")
+    for epoch in range(EPOCHS):
+        epoch_loss = 0.0
+        epoch_distortion_loss = 0.0
+        epoch_rate_loss = 0.0
+        epoch_sign_loss = 0.0
+        for batch_idx, sdf_blocks in enumerate(
+            tqdm(dataloader, total=len(dataset.npzfiles) * 20 * 50 * 128 // BATCH_SIZE)
+        ):
+            x = sdf_blocks.to(DEVICE)
+            optimizer.zero_grad()
+            aux_optimizer.zero_grad()
+            out = model(x)
+            magn_hat = out["magn_hat"]
+            sign_hat = out["sign_hat"]
+            y_likelihoods = out["likelihoods"]["y"]
+            z_likelihoods = out["likelihoods"]["z"]
+            x_hat = torch.abs(magn_hat) * torch.sign(x)
+            mask = (
+                (
+                    F.max_pool3d(torch.sign(x), kernel_size=3, stride=1, padding=1)
+                    + F.max_pool3d(-torch.sign(x), kernel_size=3, stride=1, padding=1)
+                )
+                .abs()
+                .bool()
+                .float()
+            )
+            distortion_loss = F.mse_loss(x_hat * mask, x * mask)
+            N, _, D, H, W = x.size()
+            num_voxels = N * D * H * W
+            rate_loss = torch.log(y_likelihoods).sum() / (-math.log(2) * num_voxels)
+            rate_loss += torch.log(z_likelihoods).sum() / (-math.log(2) * num_voxels)
+            is_positive = (x >= 0).squeeze(1).long()
+            sign_rate = F.cross_entropy(sign_hat, is_positive, reduction="sum") / (
+                -math.log(2) * num_voxels
+            )
+            rp = 7
+            mu = rp * math.log10(200000) / 11
+            lmbda = 1 / (10**mu)
+            loss = distortion_loss + lmbda * (rate_loss + sign_rate)
+            epoch_loss += loss
+            epoch_distortion_loss += distortion_loss
+            epoch_rate_loss += rate_loss
+            epoch_sign_loss += sign_rate
+            loss.backward()
+            optimizer.step()
+
+            aux_loss = model.aux_loss()
+            aux_loss.backward()
+            aux_optimizer.step()
+
+        epoch_loss /= len(dataloader)
+        epoch_distortion_loss /= len(dataloader)
+        epoch_rate_loss /= len(dataloader)
+        epoch_sign_loss /= len(dataloader)
+        print(
+            f"Epoch {epoch}: distortion={epoch_distortion_loss:.3e}, rate={epoch_rate_loss:.6f}, sign={epoch_sign_loss:.6f}"
+        )
+
+        if epoch_loss < best_loss:
+            best_loss = epoch_loss
+            save_path = SAVE_DIR / f"{model.__class__.__name__}_ep{epoch:03d}.pth"
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            torch.save(
+                {
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "epoch": epoch,
+                    "loss": epoch_loss,
+                    "distortion": epoch_distortion_loss,
+                    "rate": epoch_rate_loss,
+                    "sign": epoch_sign_loss,
+                },
+                save_path,
+            )
