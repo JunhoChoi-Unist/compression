@@ -64,6 +64,7 @@ class InterTSDFDataset(IterableDataset):
                 npzdataB = np.load(npzfileB)
                 sdfB = npzdataB["sdf"].astype(np.float32)
                 sdfB = (sdfB / self.sdf_trunc).clip(-1.0, 1.0)
+                t = torch.Tensor([(i + 1) / (self.gop - 1)])
                 d0, h0, w0 = sdf0.shape
                 dB, hB, wB = sdfB.shape
                 d1, h1, w1 = sdf1.shape
@@ -146,9 +147,12 @@ class InterTSDFDataset(IterableDataset):
                             or block1.max() * block1.min() <= 0
                         ):
                             yield (
-                                torch.from_numpy(block0),
-                                torch.from_numpy(blockB),
-                                torch.from_numpy(block1),
+                                (
+                                    torch.from_numpy(block0),
+                                    torch.from_numpy(blockB),
+                                    torch.from_numpy(block1),
+                                ),
+                                (t),
                             )
                         else:
                             continue
