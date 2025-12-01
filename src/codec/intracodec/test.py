@@ -1,4 +1,5 @@
 import pathlib
+import zlib
 
 import numpy as np
 import torch
@@ -23,19 +24,20 @@ if __name__ == "__main__":
     dataloader = DataLoader(dataset, batch_size=1, num_workers=0)
 
     model = HyperPrior().to(DEVICE)
-    checkpoint_path = "checkpoints/intracodec/HyperPrior_ep029.pth"
+    checkpoint_path = "checkpoints/intracodec/HyperPrior_ep099.pth"
     checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
     state_dict = checkpoint["model_state_dict"]
     model = HyperPrior.from_state_dict(state_dict).to(DEVICE)
     model.update()
     model.eval()
     # model = torch.compile(model)
+    rates = 0
     for batch_idx, (sdf_blocks, min_bound, filename) in enumerate(dataloader):
         _, nD, nH, nW, _, block_sizeD, block_sizeH, block_sizeW = sdf_blocks.shape
         sdf_hat = -torch.ones(
             (block_sizeD * nD, block_sizeH * nH, block_sizeW * nW)
         ).float()
-
+        rate = 0
         for i in range(nD):
             for j in range(nH):
                 for k in range(nW):
@@ -44,9 +46,17 @@ if __name__ == "__main__":
                         out = model.compress(x)
                         strings = out["strings"]
                         shape = out["shape"]
-                        x_hat = model.decompress(strings, shape)["x_hat"] * torch.sign(
-                            x
-                        )
+                        x_hat = model.decompress(strings, shape)["x_hat"]
+
+                        #! temporary fix for sign issue
+                        x_hat = torch.abs(x_hat) * ((x >= 0) * 2 - 1)
+
+                    for string in strings:
+                        rate += (
+                            len(zlib.compress(b"".join(string), level=9)) * 8
+                        )  # in bits
+                    rates += rate
+
                     sdf_hat[
                         i * block_sizeD : (i + 1) * block_sizeD,
                         j * block_sizeH : (j + 1) * block_sizeH,
@@ -61,6 +71,6 @@ if __name__ == "__main__":
         objfile = SAVE_DIR / dataset.dataset / dataset.scene / f"{filename[0]}.obj"
         objfile.parent.mkdir(parents=True, exist_ok=True)
         mesh.export(objfile)
-        print(f"Saved {objfile}")
-
+        print(f"Saved {objfile} -> {rate} bits")
+    print(f"Total rate: {rates} bits")
     print("Done")
