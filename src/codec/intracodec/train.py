@@ -18,7 +18,7 @@ DEVICE = torch.device(
     else "cpu"
 )
 EPOCHS = 100
-BATCH_SIZE = 8
+BATCH_SIZE = 32
 SAVE_DIR = pathlib.Path("checkpoints/intracodec")
 
 if __name__ == "__main__":
@@ -27,20 +27,20 @@ if __name__ == "__main__":
     )
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, num_workers=4)
 
-    checkpoint_path = "None"
-    # checkpoint_path = "checkpoints/intracodec/HyperPrior_ep012.pth"
+    model = HyperPrior(N=64, M=32).to(DEVICE)
+    best_loss = float("inf")
+    continue_epoch = 0
+
+    # checkpoint_path = "None"
+    checkpoint_path = "checkpoints/intracodec/HyperPrior_ep099.pth"
     if pathlib.Path(checkpoint_path).exists():
         checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
         model = HyperPrior.from_state_dict(checkpoint["model_state_dict"]).to(DEVICE)
         best_loss = checkpoint["loss"]
-        continue_epoch = checkpoint["epoch"] + 1
+        # continue_epoch = checkpoint["epoch"] + 1
         print(
             f"Resuming training from epoch {continue_epoch} with loss {best_loss:.3e}"
         )
-    else:
-        model = HyperPrior(N=64, M=32).to(DEVICE)
-        best_loss = float("inf")
-        continue_epoch = 0
 
     parameters = set(
         p for n, p in model.named_parameters() if not n.endswith(".quantiles")
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     aux_parameters = set(
         p for n, p in model.named_parameters() if n.endswith(".quantiles")
     )
-    optimizer = optim.Adam(parameters, lr=1e-4)
+    optimizer = optim.Adam(parameters, lr=1e-5)
     aux_optimizer = optim.Adam(aux_parameters, lr=1e-3)
 
     for epoch in range(continue_epoch, EPOCHS):
@@ -56,16 +56,7 @@ if __name__ == "__main__":
         epoch_distortion_loss = 0.0
         epoch_rate_loss = 0.0
         epoch_sign_loss = 0.0
-        for batch_idx, sdf_blocks in enumerate(
-            tqdm(
-                dataloader,
-                total=len(dataset.npzfiles)
-                * (200 // 64)
-                * (400 // 64)
-                * (200 // 64)
-                // BATCH_SIZE,
-            )
-        ):
+        for batch_idx, sdf_blocks in enumerate(tqdm(dataloader, total=1088)):
             x = sdf_blocks.to(DEVICE)
             optimizer.zero_grad()
             aux_optimizer.zero_grad()
@@ -78,12 +69,10 @@ if __name__ == "__main__":
             mask = (
                 (
                     F.max_pool3d(torch.sign(x), kernel_size=3, stride=1, padding=1)
-                    + F.max_pool3d(-torch.sign(x), kernel_size=3, stride=1, padding=1)
+                    * -F.max_pool3d(-torch.sign(x), kernel_size=3, stride=1, padding=1)
                 )
-                .abs()
-                .bool()
-                .float()
-            )
+                <= 0
+            ).float()
             distortion_loss = F.mse_loss(x_hat * mask, x * mask)
             N, _, D, H, W = x.size()
             num_voxels = N * D * H * W
@@ -93,7 +82,7 @@ if __name__ == "__main__":
             sign_rate = F.cross_entropy(sign_hat, is_positive, reduction="sum") / (
                 math.log(2) * num_voxels
             )
-            rp = 7
+            rp = 10
             mu = rp * math.log10(200000) / 11
             lmbda = 1 / (10**mu)
             loss = distortion_loss + lmbda * (rate_loss + sign_rate)
