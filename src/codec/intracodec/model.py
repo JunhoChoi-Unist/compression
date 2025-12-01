@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchac
 from compressai.entropy_models import EntropyBottleneck, GaussianConditional
 from compressai.models import CompressionModel
 from compressai.ops.parametrizers import NonNegativeParametrizer
@@ -170,10 +171,28 @@ class HyperPrior(CompressionModel):
         scales_hat, means_hat = gaussian_params.chunk(2, 1)
         indexes = self.gaussian_conditional.build_indexes(scales_hat)
         y_strings = self.gaussian_conditional.compress(y, indexes, means=means_hat)
-        return {"strings": [y_strings, z_strings], "shape": z.size()[-3:]}
+
+        y_hat = self.gaussian_conditional.decompress(
+            y_strings, indexes, means=means_hat
+        )
+        head = self.g_s(y_hat)
+        sign_hat = self.head_sign(head)  # B, 2, D, H, W
+        output_pdf = F.softmax(sign_hat, dim=1)  # B, 2, D, H, W
+        output_pdf = output_pdf[:, 0:1, ...]  # B, 1, D, H, W
+        B, C, D, H, W = output_pdf.size()
+        output_cdf = torch.zeros((B, C, D, H, W, 3), device="cpu")
+        output_cdf[..., 1] = output_pdf
+        output_cdf[..., 2] = 1.0
+        sym = (x >= 0).type(torch.int16).cpu()  # B, 1, D, H, W
+        s_string = torchac.encode_float_cdf(
+            output_cdf, sym, needs_normalization=True, check_input_bounds=True
+        )
+        s_strings = [s_string]
+
+        return {"strings": [y_strings, z_strings, s_strings], "shape": z.size()[-3:]}
 
     def decompress(self, strings, shape):
-        assert isinstance(strings, list) and len(strings) == 2
+        assert isinstance(strings, list) and len(strings) == 3
         z_hat = self.entropy_bottleneck.decompress(strings[1], shape)
         gaussian_params = self.h_s(z_hat)
         scales_hat, means_hat = gaussian_params.chunk(2, 1)
@@ -183,8 +202,22 @@ class HyperPrior(CompressionModel):
         )
         head = self.g_s(y_hat)
         magn_hat = self.head_magn(head).clamp(-1, 1)
-        sign_hat = self.head_sign(head)
 
-        x_hat = torch.abs(magn_hat)  #! * torch.sign(x)
+        #! temporarily remove sign decoding for testing purpose
+        #
+        # sign_hat = self.head_sign(head)
+        # output_pdf = F.softmax(sign_hat, dim=1)  # B, 2, D, H, W
+        # output_pdf = output_pdf[:, 0:1, ...]  # B, 1, D, H, W
+        # B, C, D, H, W = output_pdf.size()
+        # output_cdf = torch.zeros((B, C, D, H, W, 3), device="cpu")
+        # output_cdf[..., 1] = output_pdf
+        # output_cdf[..., 2] = 1.0
+        # sym_out = torchac.decode_float_cdf(output_cdf, strings[2][0])  # B, 1, D, H, W
+        # # 0: negative, 1: positive
+        # sign = 2 * sym_out - 1
+        # sign = sign.to(magn_hat.device)
+        # x_hat = torch.abs(magn_hat) * sign
+
+        x_hat = torch.abs(magn_hat)
 
         return {"x_hat": x_hat}
