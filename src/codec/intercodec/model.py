@@ -750,9 +750,9 @@ class RAFT(nn.Module):
         vgrid[:, 2, :, :, :] = 2.0 * vgrid[:, 2, :, :, :].clone() / max(D - 1, 1) - 1.0
 
         vgrid = vgrid.permute(0, 2, 3, 4, 1)
-        output = F.grid_sample(x, vgrid)
+        output = F.grid_sample(x, vgrid, padding_mode="border")
         mask = torch.ones(x.size()).to(flo.device)
-        mask = F.grid_sample(mask, vgrid)
+        mask = F.grid_sample(mask, vgrid, padding_mode="border")
 
         mask[mask < 0.999] = 0
         mask[mask > 0] = 1
