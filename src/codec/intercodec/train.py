@@ -35,7 +35,7 @@ if __name__ == "__main__":
     checkpoint_path = "checkpoints/intercodec/raft_ep006.pth"
     if pathlib.Path(checkpoint_path).exists():
         checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
-        model.load_state_dict(checkpoint["model_state_dict"]).to(DEVICE)
+        model.load_state_dict(checkpoint["model_state_dict"])
         best_loss = checkpoint["loss"]
         continue_epoch = checkpoint["epoch"] + 1
         print(
