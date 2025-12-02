@@ -65,11 +65,11 @@ class BottleneckBlock(nn.Module):
     def __init__(self, in_planes, planes, norm_fn="group", stride=1):
         super(BottleneckBlock, self).__init__()
 
-        self.conv1 = nn.Conv2d(in_planes, planes // 4, kernel_size=1, padding=0)
-        self.conv2 = nn.Conv2d(
+        self.conv1 = nn.Conv3d(in_planes, planes // 4, kernel_size=1, padding=0)
+        self.conv2 = nn.Conv3d(
             planes // 4, planes // 4, kernel_size=3, padding=1, stride=stride
         )
-        self.conv3 = nn.Conv2d(planes // 4, planes, kernel_size=1, padding=0)
+        self.conv3 = nn.Conv3d(planes // 4, planes, kernel_size=1, padding=0)
         self.relu = nn.ReLU(inplace=True)
 
         num_groups = planes // 8
@@ -82,18 +82,18 @@ class BottleneckBlock(nn.Module):
                 self.norm4 = nn.GroupNorm(num_groups=num_groups, num_channels=planes)
 
         elif norm_fn == "batch":
-            self.norm1 = nn.BatchNorm2d(planes // 4)
-            self.norm2 = nn.BatchNorm2d(planes // 4)
-            self.norm3 = nn.BatchNorm2d(planes)
+            self.norm1 = nn.BatchNorm3d(planes // 4)
+            self.norm2 = nn.BatchNorm3d(planes // 4)
+            self.norm3 = nn.BatchNorm3d(planes)
             if not stride == 1:
-                self.norm4 = nn.BatchNorm2d(planes)
+                self.norm4 = nn.BatchNorm3d(planes)
 
         elif norm_fn == "instance":
-            self.norm1 = nn.InstanceNorm2d(planes // 4)
-            self.norm2 = nn.InstanceNorm2d(planes // 4)
-            self.norm3 = nn.InstanceNorm2d(planes)
+            self.norm1 = nn.InstanceNorm3d(planes // 4)
+            self.norm2 = nn.InstanceNorm3d(planes // 4)
+            self.norm3 = nn.InstanceNorm3d(planes)
             if not stride == 1:
-                self.norm4 = nn.InstanceNorm2d(planes)
+                self.norm4 = nn.InstanceNorm3d(planes)
 
         elif norm_fn == "none":
             self.norm1 = nn.Sequential()
@@ -107,7 +107,7 @@ class BottleneckBlock(nn.Module):
 
         else:
             self.downsample = nn.Sequential(
-                nn.Conv2d(in_planes, planes, kernel_size=1, stride=stride), self.norm4
+                nn.Conv3d(in_planes, planes, kernel_size=1, stride=stride), self.norm4
             )
 
     def forward(self, x):
@@ -214,7 +214,7 @@ class SmallEncoder(nn.Module):
         elif self.norm_fn == "none":
             self.norm1 = nn.Sequential()
 
-        self.conv1 = nn.Conv3d(3, 32, kernel_size=7, stride=2, padding=3)
+        self.conv1 = nn.Conv3d(1, 32, kernel_size=7, stride=2, padding=3)
         self.relu1 = nn.ReLU(inplace=True)
 
         self.in_planes = 32
@@ -416,7 +416,7 @@ class SmallMotionEncoder(nn.Module):
         self.convc1 = nn.Conv3d(cor_planes, 96, 1, padding=0)
         self.convf1 = nn.Conv3d(3, 64, 7, padding=3)
         self.convf2 = nn.Conv3d(64, 32, 3, padding=1)
-        self.conv = nn.Conv3d(128, 80, 3, padding=1)
+        self.conv = nn.Conv3d(128, 79, 3, padding=1)
 
     def forward(self, flow, corr):
         cor = F.relu(self.convc1(corr))
@@ -584,8 +584,8 @@ def coords_grid(batch, dp, ht, wd, device):
     return coords[None].repeat(batch, 1, 1, 1, 1)
 
 
-def upflow8(flow, mode="bilinear"):
-    new_size = (8 * flow.shape[2], 8 * flow.shape[3])
+def upflow8(flow, mode="trilinear"):
+    new_size = (8 * flow.shape[2], 8 * flow.shape[3], 8 * flow.shape[4])
     return 8 * F.interpolate(flow, size=new_size, mode=mode, align_corners=True)
 
 
