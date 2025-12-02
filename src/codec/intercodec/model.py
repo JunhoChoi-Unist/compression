@@ -206,15 +206,15 @@ class SmallEncoder(nn.Module):
             self.norm1 = nn.GroupNorm(num_groups=8, num_channels=32)
 
         elif self.norm_fn == "batch":
-            self.norm1 = nn.BatchNorm2d(32)
+            self.norm1 = nn.BatchNorm3d(32)
 
         elif self.norm_fn == "instance":
-            self.norm1 = nn.InstanceNorm2d(32)
+            self.norm1 = nn.InstanceNorm3d(32)
 
         elif self.norm_fn == "none":
             self.norm1 = nn.Sequential()
 
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=7, stride=2, padding=3)
+        self.conv1 = nn.Conv3d(3, 32, kernel_size=7, stride=2, padding=3)
         self.relu1 = nn.ReLU(inplace=True)
 
         self.in_planes = 32
@@ -224,14 +224,14 @@ class SmallEncoder(nn.Module):
 
         self.dropout = None
         if dropout > 0:
-            self.dropout = nn.Dropout2d(p=dropout)
+            self.dropout = nn.Dropout3d(p=dropout)
 
-        self.conv2 = nn.Conv2d(96, output_dim, kernel_size=1)
+        self.conv2 = nn.Conv3d(96, output_dim, kernel_size=1)
 
         for m in self.modules():
-            if isinstance(m, nn.Conv2d):
+            if isinstance(m, nn.Conv3d):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-            elif isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d, nn.GroupNorm)):
+            elif isinstance(m, (nn.BatchNorm3d, nn.InstanceNorm3d, nn.GroupNorm)):
                 if m.weight is not None:
                     nn.init.constant_(m.weight, 1)
                 if m.bias is not None:
@@ -336,9 +336,9 @@ class FlowHead(nn.Module):
 class ConvGRU(nn.Module):
     def __init__(self, hidden_dim=128, input_dim=192 + 128):
         super(ConvGRU, self).__init__()
-        self.convz = nn.Conv2d(hidden_dim + input_dim, hidden_dim, 3, padding=1)
-        self.convr = nn.Conv2d(hidden_dim + input_dim, hidden_dim, 3, padding=1)
-        self.convq = nn.Conv2d(hidden_dim + input_dim, hidden_dim, 3, padding=1)
+        self.convz = nn.Conv3d(hidden_dim + input_dim, hidden_dim, 3, padding=1)
+        self.convr = nn.Conv3d(hidden_dim + input_dim, hidden_dim, 3, padding=1)
+        self.convq = nn.Conv3d(hidden_dim + input_dim, hidden_dim, 3, padding=1)
 
     def forward(self, h, x):
         hx = torch.cat([h, x], dim=1)
@@ -412,11 +412,11 @@ class SepConvGRU(nn.Module):
 class SmallMotionEncoder(nn.Module):
     def __init__(self, args):
         super(SmallMotionEncoder, self).__init__()
-        cor_planes = args.corr_levels * (2 * args.corr_radius + 1) ** 2
-        self.convc1 = nn.Conv2d(cor_planes, 96, 1, padding=0)
-        self.convf1 = nn.Conv2d(2, 64, 7, padding=3)
-        self.convf2 = nn.Conv2d(64, 32, 3, padding=1)
-        self.conv = nn.Conv2d(128, 80, 3, padding=1)
+        cor_planes = args.corr_levels * (2 * args.corr_radius + 1) ** 3
+        self.convc1 = nn.Conv3d(cor_planes, 96, 1, padding=0)
+        self.convf1 = nn.Conv3d(3, 64, 7, padding=3)
+        self.convf2 = nn.Conv3d(64, 32, 3, padding=1)
+        self.conv = nn.Conv3d(128, 80, 3, padding=1)
 
     def forward(self, flow, corr):
         cor = F.relu(self.convc1(corr))
@@ -590,7 +590,7 @@ def upflow8(flow, mode="bilinear"):
 
 
 default_raft_args = {
-    "small": False,
+    "small": True,
     "dropout": 0.5,
     "mixed_precision": True,
 }
@@ -609,10 +609,10 @@ class RAFT(nn.Module):
             args.corr_radius = 3
 
         else:
-            self.hidden_dim = hdim = 64
-            self.context_dim = cdim = 96
+            self.hidden_dim = hdim = 96
+            self.context_dim = cdim = 64
             args.corr_levels = 4
-            args.corr_radius = 4
+            args.corr_radius = 3
 
         if not hasattr(self.args, "dropout"):
             self.args.dropout = 0
