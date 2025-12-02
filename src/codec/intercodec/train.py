@@ -1,4 +1,5 @@
 import pathlib
+import warnings
 
 import torch
 import torch.nn.functional as F
@@ -9,6 +10,7 @@ from tqdm import tqdm
 from codec.intercodec.model import RAFT
 from dataset import InterTSDFDataset
 
+warnings.filterwarnings("ignore", category=UserWarning, module="torch")
 DEVICE = torch.device(
     "cuda"
     if torch.cuda.is_available()
@@ -59,7 +61,7 @@ if __name__ == "__main__":
             sdf_blocks0 = sdf_blocks0.to(DEVICE)
             sdf_blocksB = sdf_blocksB.to(DEVICE)
             sdf_blocks1 = sdf_blocks1.to(DEVICE)
-            t = t.to(DEVICE)
+            t = t.view(-1, 1, 1, 1, 1).to(DEVICE)
             optimizer.zero_grad()
             flow_predictions = model(
                 sdf_blocks1,
