@@ -32,7 +32,7 @@ if __name__ == "__main__":
     best_loss = float("inf")
     continue_epoch = 0
 
-    checkpoint_path = "checkpoints/intercodec/raft_ep020.pth"
+    checkpoint_path = "checkpoints/intercodec/raft_ep028.pth"
     if pathlib.Path(checkpoint_path).exists():
         checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # )
     # optimizer = optim.Adam(parameters, lr=1e-5)
     # aux_optimizer = optim.Adam(aux_parameters, lr=1e-3)
-    optimizer = optim.Adam(model.parameters(), lr=1e-6)
+    optimizer = optim.Adam(model.parameters(), lr=1e-5)
 
     for epoch in range(continue_epoch, EPOCHS):
         epoch_loss = 0.0

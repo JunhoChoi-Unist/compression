@@ -127,6 +127,7 @@ class InterTSDFDataset(IterableDataset):
                                 torch.from_numpy(blockB),
                                 torch.from_numpy(block1),
                             ),
+                            (t),
                             (min_bound0, min_boundB, min_bound1),
                             (npzfile0.stem, npzfileB.stem, npzfile1.stem),
                         )
