@@ -38,6 +38,12 @@ if __name__ == "__main__":
     # model.eval()
     # model = torch.compile(model)
     model = RAFT().to(DEVICE)
+    checkpoint_path = "checkpoints/intercodec/raft_ep006.pth"
+    checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
+    state_dict = checkpoint["model_state_dict"]
+    # model = HyperPrior.from_state_dict(state_dict).to(DEVICE)
+    model.load_state_dict(state_dict)
+    model.eval()
     rates = 0
     for batch_idx, (sdf_blocks, min_bounds, filenames) in enumerate(dataloader):
         sdf_blocks0, sdf_blocksB, sdf_blocks1 = sdf_blocks

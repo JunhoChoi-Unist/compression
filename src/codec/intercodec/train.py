@@ -32,12 +32,12 @@ if __name__ == "__main__":
     best_loss = float("inf")
     continue_epoch = 0
 
-    checkpoint_path = "None"
+    checkpoint_path = "checkpoints/intercodec/raft_ep006.pth"
     if pathlib.Path(checkpoint_path).exists():
         checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
-        model = RAFT.from_state_dict(checkpoint["model_state_dict"]).to(DEVICE)
+        model.load_state_dict(checkpoint["model_state_dict"]).to(DEVICE)
         best_loss = checkpoint["loss"]
-        # continue_epoch = checkpoint["epoch"] + 1
+        continue_epoch = checkpoint["epoch"] + 1
         print(
             f"Resuming training from epoch {continue_epoch} with loss {best_loss:.3e}"
         )
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # )
     # optimizer = optim.Adam(parameters, lr=1e-5)
     # aux_optimizer = optim.Adam(aux_parameters, lr=1e-3)
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
     for epoch in range(continue_epoch, EPOCHS):
         epoch_loss = 0.0
