@@ -609,8 +609,8 @@ class RAFT(nn.Module):
             args.corr_radius = 3
 
         else:
-            self.hidden_dim = hdim = 128
-            self.context_dim = cdim = 128
+            self.hidden_dim = hdim = 64
+            self.context_dim = cdim = 96
             args.corr_levels = 4
             args.corr_radius = 4
 
@@ -632,7 +632,7 @@ class RAFT(nn.Module):
 
         else:
             self.fnet = BasicEncoder(
-                output_dim=256, norm_fn="instance", dropout=args.dropout
+                output_dim=128, norm_fn="instance", dropout=args.dropout
             )
             self.cnet = BasicEncoder(
                 output_dim=hdim + cdim, norm_fn="batch", dropout=args.dropout
