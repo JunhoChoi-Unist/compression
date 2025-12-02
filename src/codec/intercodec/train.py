@@ -26,7 +26,7 @@ if __name__ == "__main__":
     dataset = InterTSDFDataset(
         dataset="MPEG", scene="longdress_voxelized", mode="train"
     )
-    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, num_workers=8)
 
     model = RAFT().to(DEVICE)
     best_loss = float("inf")
