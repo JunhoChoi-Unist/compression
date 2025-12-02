@@ -19,14 +19,14 @@ DEVICE = torch.device(
     else "cpu"
 )
 EPOCHS = 100
-BATCH_SIZE = 4
+BATCH_SIZE = 3
 SAVE_DIR = pathlib.Path("checkpoints/intercodec")
 
 if __name__ == "__main__":
     dataset = InterTSDFDataset(
         dataset="MPEG", scene="longdress_voxelized", mode="train"
     )
-    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, num_workers=8)
+    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, num_workers=4)
 
     model = RAFT().to(DEVICE)
     best_loss = float("inf")
