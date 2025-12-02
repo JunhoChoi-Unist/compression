@@ -59,6 +59,7 @@ if __name__ == "__main__":
             sdf_blocks0 = sdf_blocks0.to(DEVICE)
             sdf_blocksB = sdf_blocksB.to(DEVICE)
             sdf_blocks1 = sdf_blocks1.to(DEVICE)
+            t = t.to(DEVICE)
             optimizer.zero_grad()
             flow_predictions = model(
                 sdf_blocks1,
