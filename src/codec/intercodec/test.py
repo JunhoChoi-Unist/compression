@@ -38,7 +38,7 @@ if __name__ == "__main__":
     # model.eval()
     # model = torch.compile(model)
     model = RAFT().to(DEVICE)
-    checkpoint_path = "checkpoints/intercodec/raft_ep028.pth"
+    checkpoint_path = "checkpoints/intercodec/raft_ep001.pth"
     checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
     state_dict = checkpoint["model_state_dict"]
     # model = HyperPrior.from_state_dict(state_dict).to(DEVICE)

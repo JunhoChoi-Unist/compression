@@ -24,7 +24,7 @@ if __name__ == "__main__":
     dataloader = DataLoader(dataset, batch_size=1, num_workers=0)
 
     model = HyperPrior().to(DEVICE)
-    checkpoint_path = "checkpoints/intracodec/HyperPrior_ep037.pth"
+    checkpoint_path = "checkpoints/intracodec/HyperPrior_ep099.pth"
     checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
     state_dict = checkpoint["model_state_dict"]
     model = HyperPrior.from_state_dict(state_dict).to(DEVICE)
