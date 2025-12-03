@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchac
 from compressai.entropy_models import EntropyBottleneck, GaussianConditional
 from compressai.models import CompressionModel
 from compressai.ops.parametrizers import NonNegativeParametrizer
@@ -161,6 +160,8 @@ class HyperPrior(CompressionModel):
         return net
 
     def compress(self, x):
+        import torchac
+
         y = self.g_a(x)
         z = self.h_a(y)
 
