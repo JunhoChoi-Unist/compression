@@ -54,12 +54,12 @@ if __name__ == "__main__":
     best_loss = float("inf")
     continue_epoch = 0
 
-    checkpoint_path = "checkpoints/intercodec/raft_ep028.pth"
+    checkpoint_path = "checkpoints/intercodec/raft_ep072.pth"
     if pathlib.Path(checkpoint_path).exists():
         checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
         model.load_state_dict(checkpoint["model_state_dict"])
-        best_loss = checkpoint["loss"]
-        continue_epoch = checkpoint["epoch"] + 1
+        # best_loss = checkpoint["loss"]
+        # continue_epoch = checkpoint["epoch"] + 1
         print(
             f"Resuming training from epoch {continue_epoch} with loss {best_loss:.3e}"
         )
