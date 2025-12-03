@@ -72,7 +72,7 @@ if __name__ == "__main__":
     # )
     # optimizer = optim.Adam(parameters, lr=1e-5)
     # aux_optimizer = optim.Adam(aux_parameters, lr=1e-3)
-    optimizer = optim.Adam(model.parameters(), lr=1e-6)
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
     for epoch in range(continue_epoch, EPOCHS):
         epoch_loss = 0.0
