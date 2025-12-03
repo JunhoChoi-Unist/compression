@@ -10,6 +10,8 @@ from tqdm import tqdm
 from codec.intercodec.model import RAFT
 from dataset import InterTSDFDataset
 
+warnings.filterwarnings("ignore", category=UserWarning, module="torch")
+
 
 def surface_aware_loss(sdf_pred, sdf_gt, threshold=0.1):
     """
@@ -32,7 +34,23 @@ def surface_aware_loss(sdf_pred, sdf_gt, threshold=0.1):
     return surface_loss + 0.1 * grad_loss
 
 
-warnings.filterwarnings("ignore", category=UserWarning, module="torch")
+def flow_regularization_loss(flow):
+    """
+    Regularization for 3D scene flow
+    """
+    # Smoothness loss - neighboring voxels should have similar flow
+    grad_x = torch.diff(flow, dim=2)
+    grad_y = torch.diff(flow, dim=3)
+    grad_z = torch.diff(flow, dim=4)
+
+    smoothness_loss = (grad_x**2).mean() + (grad_y**2).mean() + (grad_z**2).mean()
+
+    # Sparsity loss - encourage sparse flow
+    sparsity_loss = torch.abs(flow).mean()
+
+    return smoothness_loss + 0.01 * sparsity_loss
+
+
 DEVICE = torch.device(
     "cuda"
     if torch.cuda.is_available()
@@ -77,6 +95,7 @@ if __name__ == "__main__":
     for epoch in range(continue_epoch, EPOCHS):
         epoch_loss = 0.0
         epoch_distortion_loss = 0.0
+        epoch_regularization_loss = 0.0
         flow_init = None
         for batch_idx, (sdf_blocks, t) in enumerate(tqdm(dataloader, total=1088)):
             sdf_blocks0, sdf_blocksB, sdf_blocks1 = sdf_blocks
@@ -95,16 +114,22 @@ if __name__ == "__main__":
             )
             flow_predictions = [flow * t for flow in flow_predictions]
             distortion_loss = 0.0
+            regularization_loss = 0.0
             for i, flow in enumerate(flow_predictions):
                 _lmbda = 0.8 ** (len(flow_predictions) - i - 1)
                 sdf_hat = model.warp(sdf_blocks0, flow)
                 distortion_loss += _lmbda * surface_aware_loss(sdf_hat, sdf_blocksB)
+                regularization_loss += _lmbda * flow_regularization_loss(flow)
             distortion_loss = distortion_loss / sum(
                 0.8**i for i in range(len(flow_predictions))
             )
-            loss = distortion_loss
+            regularization_loss = regularization_loss / sum(
+                0.8**i for i in range(len(flow_predictions))
+            )
+            loss = distortion_loss + 0.1 * regularization_loss
             epoch_loss += loss
             epoch_distortion_loss += distortion_loss
+            epoch_regularization_loss += regularization_loss
             loss.backward()
             optimizer.step()
 
@@ -114,7 +139,10 @@ if __name__ == "__main__":
 
         epoch_loss /= batch_idx
         epoch_distortion_loss /= batch_idx
-        print(f"Epoch {epoch}: distortion={epoch_distortion_loss:.3e}")
+        epoch_regularization_loss /= batch_idx
+        print(
+            f"Epoch {epoch}: distortion={epoch_distortion_loss:.3e} reg={epoch_regularization_loss:.3e}"
+        )
 
         if epoch_loss < best_loss:
             best_loss = epoch_loss
