@@ -10,6 +10,28 @@ from tqdm import tqdm
 from codec.intercodec.model import RAFT
 from dataset import InterTSDFDataset
 
+
+def surface_aware_loss(sdf_pred, sdf_gt, threshold=0.1):
+    """
+    Compute loss that focuses on surface regions
+    """
+    surface_mask = (torch.abs(sdf_gt) < threshold).float()
+
+    surface_loss = F.mse_loss(sdf_pred * surface_mask, sdf_gt * surface_mask)
+
+    # Add gradient loss for surface consistency
+    grad_pred = torch.gradient(sdf_pred, dim=[2, 3, 4])
+    grad_gt = torch.gradient(sdf_gt, dim=[2, 3, 4])
+    grad_loss = sum(
+        [
+            F.mse_loss(gp * surface_mask, gg * surface_mask)
+            for gp, gg in zip(grad_pred, grad_gt)
+        ]
+    )
+
+    return surface_loss + 0.1 * grad_loss
+
+
 warnings.filterwarnings("ignore", category=UserWarning, module="torch")
 DEVICE = torch.device(
     "cuda"
@@ -76,7 +98,7 @@ if __name__ == "__main__":
             for i, flow in enumerate(flow_predictions):
                 _lmbda = 0.8 ** (len(flow_predictions) - i - 1)
                 sdf_hat = model.warp(sdf_blocks0, flow)
-                distortion_loss += _lmbda * F.mse_loss(sdf_hat, sdf_blocksB)
+                distortion_loss += _lmbda * surface_aware_loss(sdf_hat, sdf_blocksB)
             distortion_loss = distortion_loss / sum(
                 0.8**i for i in range(len(flow_predictions))
             )
