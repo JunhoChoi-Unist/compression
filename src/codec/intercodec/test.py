@@ -74,7 +74,7 @@ if __name__ == "__main__":
                             upsample=True,
                             test_mode=True,
                         )
-                        flow_up = flow_up * t
+                        flow_up = model.interpolate_flow(flow_up, t)
                         x_hat = model.warp(x0, flow_up)
 
                     # for string in strings:

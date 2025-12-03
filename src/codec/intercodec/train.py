@@ -112,11 +112,11 @@ if __name__ == "__main__":
                 upsample=True,
                 test_mode=False,
             )
-            flow_predictions = [flow * t for flow in flow_predictions]
             distortion_loss = 0.0
             regularization_loss = 0.0
             for i, flow in enumerate(flow_predictions):
                 _lmbda = 0.8 ** (len(flow_predictions) - i - 1)
+                flow = model.interpolate_flow(flow, t)
                 sdf_hat = model.warp(sdf_blocks0, flow)
                 distortion_loss += _lmbda * surface_aware_loss(sdf_hat, sdf_blocksB)
                 regularization_loss += _lmbda * flow_regularization_loss(flow)

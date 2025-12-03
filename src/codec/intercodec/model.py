@@ -639,6 +639,14 @@ class RAFT(nn.Module):
             )
             self.update_block = BasicUpdateBlock(self.args, hidden_dim=hdim)
 
+        self.interpolation_mlp = nn.Sequential(
+            nn.Conv3d(3 + 1, 64, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(64, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(32, 3, 3, padding=1),
+        )
+
     def freeze_bn(self):
         for m in self.modules():
             if isinstance(m, nn.BatchNorm2d):
@@ -724,6 +732,10 @@ class RAFT(nn.Module):
             return coords1 - coords0, flow_up
 
         return flow_predictions
+
+    def interpolate_flow(self, flow, t):
+        flow_t = self.interpolation_mlp(torch.cat([flow, t], dim=1))
+        return flow_t
 
     def warp(self, x, flo):
         """
