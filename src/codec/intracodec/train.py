@@ -18,7 +18,7 @@ DEVICE = torch.device(
     else "cpu"
 )
 EPOCHS = 100
-BATCH_SIZE = 16
+BATCH_SIZE = 8
 SAVE_DIR = pathlib.Path("checkpoints/intracodec")
 
 if __name__ == "__main__":
