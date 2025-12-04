@@ -18,7 +18,7 @@ DEVICE = torch.device(
     else "cpu"
 )
 EPOCHS = 100
-BATCH_SIZE = 8
+BATCH_SIZE = 4
 SAVE_DIR = pathlib.Path("checkpoints/intracodec")
 
 if __name__ == "__main__":
@@ -66,13 +66,8 @@ if __name__ == "__main__":
             y_likelihoods = out["likelihoods"]["y"]
             z_likelihoods = out["likelihoods"]["z"]
             x_hat = torch.abs(magn_hat) * torch.sign(x)
-            mask = (
-                (
-                    F.max_pool3d(torch.sign(x), kernel_size=3, stride=1, padding=1)
-                    * -F.max_pool3d(-torch.sign(x), kernel_size=3, stride=1, padding=1)
-                )
-                <= 0
-            ).float()
+            threshold = 0.1
+            mask = (torch.abs(x) < threshold).float()
             distortion_loss = F.mse_loss(x_hat * mask, x * mask)
             N, _, D, H, W = x.size()
             num_voxels = N * D * H * W
