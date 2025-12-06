@@ -31,8 +31,7 @@ class InterTSDFDataset(IterableDataset):
         if mode == "test":
             self.npzfiles = self.npzfiles[:28]
         else:
-            self.npzfiles = self.npzfiles[:28]
-        #     random.shuffle(self.npzfiles)
+            pass
 
         with np.load(SDF_ROOT / dataset / scene / "common.npz") as common:
             self.voxel_size = common["voxel_size"].astype(np.float32)

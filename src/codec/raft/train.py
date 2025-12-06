@@ -82,14 +82,6 @@ if __name__ == "__main__":
             f"Resuming training from epoch {continue_epoch} with loss {best_loss:.3e}"
         )
 
-    # parameters = set(
-    #     p for n, p in model.named_parameters() if not n.endswith(".quantiles")
-    # )
-    # aux_parameters = set(
-    #     p for n, p in model.named_parameters() if n.endswith(".quantiles")
-    # )
-    # optimizer = optim.Adam(parameters, lr=1e-5)
-    # aux_optimizer = optim.Adam(aux_parameters, lr=1e-3)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     for epoch in range(continue_epoch, EPOCHS):
@@ -134,10 +126,6 @@ if __name__ == "__main__":
             epoch_regularization_loss += regularization_loss
             loss.backward()
             optimizer.step()
-
-            # aux_loss = model.aux_loss()
-            # aux_loss.backward()
-            # aux_optimizer.step()
 
         epoch_loss /= batch_idx
         epoch_distortion_loss /= batch_idx
