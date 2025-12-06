@@ -64,13 +64,10 @@ class InterTSDFDataset(IterableDataset):
             max_d = max(d0, d1)
             max_h = max(h0, h1)
             max_w = max(w0, w1)
-            sdfBs = []
             for i in range(self.gop - 2):
-                npzfileB = npzfiles.pop(0)
+                npzfileB = npzfiles[i]
                 npzdataB = np.load(npzfileB)
                 sdfB = npzdataB["sdf"].astype(np.float32)
-                sdfB = (sdfB / self.sdf_trunc).clip(-1.0, 1.0)
-                sdfBs.append(sdfB)
                 dB, hB, wB = sdfB.shape
                 max_d = max(max_d, dB)
                 max_h = max(max_h, hB)
@@ -110,7 +107,10 @@ class InterTSDFDataset(IterableDataset):
                 blocks0 = blocks0.reshape(-1, 1, block_sizeD, block_sizeH, block_sizeW)
                 blocks1 = blocks1.reshape(-1, 1, block_sizeD, block_sizeH, block_sizeW)
             for i in range(self.gop - 2):
-                sdfB = sdfBs[i]
+                npzfileB = npzfiles.pop(0)
+                npzdataB = np.load(npzfileB)
+                sdfB = npzdataB["sdf"].astype(np.float32)
+                sdfB = (sdfB / self.sdf_trunc).clip(-1.0, 1.0)
                 t = torch.Tensor([(i + 1) / (self.gop - 1)])
                 dB, hB, wB = sdfB.shape
 
