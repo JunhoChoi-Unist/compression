@@ -95,6 +95,13 @@ class InterTSDFDataset(IterableDataset):
             )
             blocks0 = blockify(_sdf0, block_size=128)
             blocks1 = blockify(_sdf1, block_size=128)
+            nD, nH, nW, block_sizeD, block_sizeH, block_sizeW = blocks0.shape
+
+            if self.mode == "test":
+                pass
+            else:
+                blocks0 = blocks0.reshape(-1, 1, block_sizeD, block_sizeH, block_sizeW)
+                blocks1 = blocks1.reshape(-1, 1, block_sizeD, block_sizeH, block_sizeW)
             for i in range(self.gop - 2):
                 # npzfileB = npzfiles.pop(0)
                 # npzdataB = np.load(npzfileB)
@@ -103,7 +110,7 @@ class InterTSDFDataset(IterableDataset):
                 sdfB = sdfBs[i]
                 t = torch.Tensor([(i + 1) / (self.gop - 1)])
                 # d0, h0, w0 = sdf0.shape
-                # dB, hB, wB = sdfB.shape
+                dB, hB, wB = sdfB.shape
                 # d1, h1, w1 = sdf1.shape
 
                 # max_d = max(d0, dB, d1)
@@ -142,7 +149,7 @@ class InterTSDFDataset(IterableDataset):
                 # blocks0 = blockify(_sdf0, block_size=128)
                 blocksB = blockify(_sdfB, block_size=128)
                 # blocks1 = blockify(_sdf1, block_size=128)
-                nD, nH, nW, block_sizeD, block_sizeH, block_sizeW = blocks0.shape
+                # nD, nH, nW, block_sizeD, block_sizeH, block_sizeW = blocks0.shape
                 if self.mode == "test":
                     blocks0 = blocks0.reshape(
                         1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
@@ -168,15 +175,15 @@ class InterTSDFDataset(IterableDataset):
                             (npzfile0.stem, npzfileB.stem, npzfile1.stem),
                         )
                 else:
-                    blocks0 = blocks0.reshape(
-                        -1, 1, block_sizeD, block_sizeH, block_sizeW
-                    )
+                    #     blocks0 = blocks0.reshape(
+                    #         -1, 1, block_sizeD, block_sizeH, block_sizeW
+                    #     )
                     blocksB = blocksB.reshape(
                         -1, 1, block_sizeD, block_sizeH, block_sizeW
                     )
-                    blocks1 = blocks1.reshape(
-                        -1, 1, block_sizeD, block_sizeH, block_sizeW
-                    )
+                    # blocks1 = blocks1.reshape(
+                    #     -1, 1, block_sizeD, block_sizeH, block_sizeW
+                    # )
                     for block0, blockB, block1 in zip(blocks0, blocksB, blocks1):
                         # check if the block contains any surface voxels
                         if (
