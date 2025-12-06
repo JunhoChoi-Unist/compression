@@ -96,9 +96,16 @@ class InterTSDFDataset(IterableDataset):
             blocks0 = blockify(_sdf0, block_size=128)
             blocks1 = blockify(_sdf1, block_size=128)
             nD, nH, nW, block_sizeD, block_sizeH, block_sizeW = blocks0.shape
-
             if self.mode == "test":
-                pass
+                blocks0 = blocks0.reshape(
+                    1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
+                )
+                blocks1 = blocks1.reshape(
+                    1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
+                )
+                min_bound0 = npzdata0["min_bound"].astype(np.float32)
+                min_bound1 = npzdata1["min_bound"].astype(np.float32)
+
             else:
                 blocks0 = blocks0.reshape(-1, 1, block_sizeD, block_sizeH, block_sizeW)
                 blocks1 = blocks1.reshape(-1, 1, block_sizeD, block_sizeH, block_sizeW)
@@ -151,18 +158,18 @@ class InterTSDFDataset(IterableDataset):
                 # blocks1 = blockify(_sdf1, block_size=128)
                 # nD, nH, nW, block_sizeD, block_sizeH, block_sizeW = blocks0.shape
                 if self.mode == "test":
-                    blocks0 = blocks0.reshape(
-                        1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
-                    )
+                    # blocks0 = blocks0.reshape(
+                    #     1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
+                    # )
                     blocksB = blocksB.reshape(
                         1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
                     )
-                    blocks1 = blocks1.reshape(
-                        1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
-                    )
-                    min_bound0 = npzdata0["min_bound"].astype(np.float32)
+                    # blocks1 = blocks1.reshape(
+                    #     1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
+                    # )
+                    # min_bound0 = npzdata0["min_bound"].astype(np.float32)
                     min_boundB = npzdataB["min_bound"].astype(np.float32)
-                    min_bound1 = npzdata1["min_bound"].astype(np.float32)
+                    # min_bound1 = npzdata1["min_bound"].astype(np.float32)
                     for block0, blockB, block1 in zip(blocks0, blocksB, blocks1):
                         yield (
                             (
