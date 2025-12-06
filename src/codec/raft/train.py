@@ -123,9 +123,9 @@ if __name__ == "__main__":
                 0.8**i for i in range(len(flow_predictions))
             )
             loss = distortion_loss + 0.1 * regularization_loss
-            epoch_loss += loss
-            epoch_distortion_loss += distortion_loss
-            epoch_regularization_loss += regularization_loss
+            epoch_loss += loss.item()
+            epoch_distortion_loss += distortion_loss.item()
+            epoch_regularization_loss += regularization_loss.item()
             loss.backward()
             optimizer.step()
 
