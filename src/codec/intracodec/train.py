@@ -31,12 +31,26 @@ if __name__ == "__main__":
     best_loss = float("inf")
     continue_epoch = 0
 
-    parameters = set(
-        p for n, p in model.named_parameters() if not n.endswith(".quantiles")
-    )
-    aux_parameters = set(
-        p for n, p in model.named_parameters() if n.endswith(".quantiles")
-    )
+    # Use list of tuples instead of dict to be able to later check the elements are unique and there is no intersection
+    parameters = [
+        (n, p) for n, p in model.named_parameters() if not n.endswith(".quantiles")
+    ]
+    aux_parameters = [
+        (n, p) for n, p in model.named_parameters() if n.endswith(".quantiles")
+    ]
+
+    # # Make sure we don't have an intersection of parameters
+    # parameters_name_set = set(n for n,p in parameters)
+    # aux_parameters_name_set = set(n for n, p in aux_parameters)
+    # assert len(parameters) == len(parameters_name_set)
+    # assert len(aux_parameters) == len(aux_parameters_name_set)
+
+    # inter_params = parameters_name_set & aux_parameters_name_set
+    # union_params = parameters_name_set | aux_parameters_name_set
+
+    # assert len(inter_params) == 0
+    # assert len(union_params) - len(dict(net.named_parameters()).keys()) == 0
+
     optimizer = optim.Adam(parameters, lr=1e-2)  # 1e-3: exploded
     # ~800epochs with 1e-3 lr: D:1.5e-05 S:0.035 --> 1e-4
     aux_optimizer = optim.Adam(aux_parameters, lr=1e-3)
