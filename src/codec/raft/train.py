@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from codec.intercodec.model import RAFT
+from codec.raft.model import RAFT
 from dataset import InterTSDFDataset
 
 warnings.filterwarnings("ignore", category=UserWarning, module="torch")
