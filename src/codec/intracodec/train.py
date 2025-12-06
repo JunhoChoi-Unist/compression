@@ -33,10 +33,10 @@ if __name__ == "__main__":
 
     # Use list of tuples instead of dict to be able to later check the elements are unique and there is no intersection
     parameters = [
-        (n, p) for n, p in model.named_parameters() if not n.endswith(".quantiles")
+        p for n, p in model.named_parameters() if not n.endswith(".quantiles")
     ]
     aux_parameters = [
-        (n, p) for n, p in model.named_parameters() if n.endswith(".quantiles")
+        p for n, p in model.named_parameters() if n.endswith(".quantiles")
     ]
 
     # # Make sure we don't have an intersection of parameters
@@ -63,12 +63,12 @@ if __name__ == "__main__":
         model = HyperPrior.from_state_dict(checkpoint["model_state_dict"]).to(DEVICE)
         best_loss = checkpoint["loss"]
         continue_epoch = checkpoint["epoch"] + 1
-        parameters = set(
+        parameters = [
             p for n, p in model.named_parameters() if not n.endswith(".quantiles")
-        )
-        aux_parameters = set(
+        ]
+        aux_parameters = [
             p for n, p in model.named_parameters() if n.endswith(".quantiles")
-        )
+        ]
         optimizer = optim.Adam(parameters, lr=1e-2)  # 1e-3: exploded
         aux_optimizer = optim.Adam(aux_parameters, lr=1e-3)
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
