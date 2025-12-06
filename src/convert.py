@@ -115,6 +115,6 @@ def convert_sdf(
 
 if __name__ == "__main__":
     dataset = "MPEG"
-    scene = "redandblack_voxelized"
+    scene = "longdress_voxelized"
     convert_mesh(dataset, scene)
     convert_sdf(dataset, scene)
