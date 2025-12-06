@@ -69,20 +69,21 @@ if __name__ == "__main__":
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, num_workers=4)
 
     model = RAFT().to(DEVICE)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
     best_loss = float("inf")
     continue_epoch = 0
 
-    checkpoint_path = "checkpoints/intercodec/raft_ep072.pth"
+    checkpoint_path = "checkpoints/intercodec/raft_ep000.pth"
     if pathlib.Path(checkpoint_path).exists():
         checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
         model.load_state_dict(checkpoint["model_state_dict"])
-        # best_loss = checkpoint["loss"]
-        # continue_epoch = checkpoint["epoch"] + 1
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        best_loss = checkpoint["loss"]
+        continue_epoch = checkpoint["epoch"] + 1
         print(
             f"Resuming training from epoch {continue_epoch} with loss {best_loss:.3e}"
         )
-
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     for epoch in range(continue_epoch, EPOCHS):
         epoch_loss = 0.0

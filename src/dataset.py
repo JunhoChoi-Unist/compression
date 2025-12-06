@@ -110,29 +110,9 @@ class InterTSDFDataset(IterableDataset):
                 blocks0 = blocks0.reshape(-1, 1, block_sizeD, block_sizeH, block_sizeW)
                 blocks1 = blocks1.reshape(-1, 1, block_sizeD, block_sizeH, block_sizeW)
             for i in range(self.gop - 2):
-                # npzfileB = npzfiles.pop(0)
-                # npzdataB = np.load(npzfileB)
-                # sdfB = npzdataB["sdf"].astype(np.float32)
-                # sdfB = (sdfB / self.sdf_trunc).clip(-1.0, 1.0)
                 sdfB = sdfBs[i]
                 t = torch.Tensor([(i + 1) / (self.gop - 1)])
-                # d0, h0, w0 = sdf0.shape
                 dB, hB, wB = sdfB.shape
-                # d1, h1, w1 = sdf1.shape
-
-                # max_d = max(d0, dB, d1)
-                # max_h = max(h0, hB, h1)
-                # max_w = max(w0, wB, w1)
-
-                # pad_d0 = max_d - d0
-                # pad_h0 = max_h - h0
-                # pad_w0 = max_w - w0
-                # _sdf0 = np.pad(
-                #     sdf0,
-                #     ((0, pad_d0), (0, pad_h0), (0, pad_w0)),
-                #     mode="constant",
-                #     constant_values=-1.0,
-                # )
 
                 pad_dB = max_d - dB
                 pad_hB = max_h - hB
@@ -144,32 +124,12 @@ class InterTSDFDataset(IterableDataset):
                     constant_values=-1.0,
                 )
 
-                # pad_d1 = max_d - d1
-                # pad_h1 = max_h - h1
-                # pad_w1 = max_w - w1
-                # _sdf1 = np.pad(
-                #     sdf1,
-                #     ((0, pad_d1), (0, pad_h1), (0, pad_w1)),
-                #     mode="constant",
-                #     constant_values=-1.0,
-                # )
-                # blocks0 = blockify(_sdf0, block_size=128)
                 blocksB = blockify(_sdfB, block_size=128)
-                # blocks1 = blockify(_sdf1, block_size=128)
-                # nD, nH, nW, block_sizeD, block_sizeH, block_sizeW = blocks0.shape
                 if self.mode == "test":
-                    # blocks0 = blocks0.reshape(
-                    #     1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
-                    # )
                     blocksB = blocksB.reshape(
                         1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
                     )
-                    # blocks1 = blocks1.reshape(
-                    #     1, nD, nH, nW, 1, block_sizeD, block_sizeH, block_sizeW
-                    # )
-                    # min_bound0 = npzdata0["min_bound"].astype(np.float32)
                     min_boundB = npzdataB["min_bound"].astype(np.float32)
-                    # min_bound1 = npzdata1["min_bound"].astype(np.float32)
                     for block0, blockB, block1 in zip(blocks0, blocksB, blocks1):
                         yield (
                             (
@@ -182,15 +142,9 @@ class InterTSDFDataset(IterableDataset):
                             (npzfile0.stem, npzfileB.stem, npzfile1.stem),
                         )
                 else:
-                    #     blocks0 = blocks0.reshape(
-                    #         -1, 1, block_sizeD, block_sizeH, block_sizeW
-                    #     )
                     blocksB = blocksB.reshape(
                         -1, 1, block_sizeD, block_sizeH, block_sizeW
                     )
-                    # blocks1 = blocks1.reshape(
-                    #     -1, 1, block_sizeD, block_sizeH, block_sizeW
-                    # )
                     for block0, blockB, block1 in zip(blocks0, blocksB, blocks1):
                         # check if the block contains any surface voxels
                         if (
