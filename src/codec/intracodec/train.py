@@ -31,18 +31,6 @@ if __name__ == "__main__":
     best_loss = float("inf")
     continue_epoch = 0
 
-    checkpoint_path = "None"
-    # checkpoint_path = "checkpoints/intracodec/HyperPrior_ep756.pth"
-    # "level10: Epoch 756: distortion=7.057e-05, rate=0.021375, sign=0.003229 [SAVED]"
-    if pathlib.Path(checkpoint_path).exists():
-        checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
-        model = HyperPrior.from_state_dict(checkpoint["model_state_dict"]).to(DEVICE)
-        # best_loss = checkpoint["loss"]
-        # continue_epoch = checkpoint["epoch"] + 1
-        print(
-            f"Resuming training from epoch {continue_epoch} with loss {best_loss:.3e}"
-        )
-
     parameters = set(
         p for n, p in model.named_parameters() if not n.endswith(".quantiles")
     )
@@ -52,6 +40,28 @@ if __name__ == "__main__":
     optimizer = optim.Adam(parameters, lr=1e-2)  # 1e-3: exploded
     # ~800epochs with 1e-3 lr: D:1.5e-05 S:0.035 --> 1e-4
     aux_optimizer = optim.Adam(aux_parameters, lr=1e-3)
+
+    checkpoint_path = "None"
+    # checkpoint_path = "checkpoints/intracodec/HyperPrior_ep756.pth"
+    # "level10: Epoch 756: distortion=7.057e-05, rate=0.021375, sign=0.003229 [SAVED]"
+    if pathlib.Path(checkpoint_path).exists():
+        checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
+        model = HyperPrior.from_state_dict(checkpoint["model_state_dict"]).to(DEVICE)
+        best_loss = checkpoint["loss"]
+        continue_epoch = checkpoint["epoch"] + 1
+        parameters = set(
+            p for n, p in model.named_parameters() if not n.endswith(".quantiles")
+        )
+        aux_parameters = set(
+            p for n, p in model.named_parameters() if n.endswith(".quantiles")
+        )
+        optimizer = optim.Adam(parameters, lr=1e-2)  # 1e-3: exploded
+        aux_optimizer = optim.Adam(aux_parameters, lr=1e-3)
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        aux_optimizer.load_state_dict(checkpoint["aux_optimizer_state_dict"])
+        print(
+            f"Resuming training from epoch {continue_epoch} with loss {best_loss:.3e}"
+        )
 
     for epoch in range(continue_epoch, EPOCHS):
         epoch_loss = 0.0
@@ -111,6 +121,7 @@ if __name__ == "__main__":
                 {
                     "model_state_dict": model.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
+                    "aux_optimizer_state_dict": aux_optimizer.state_dict(),
                     "epoch": epoch,
                     "loss": epoch_loss,
                     "distortion": epoch_distortion_loss,
