@@ -179,8 +179,9 @@ class IntraTSDFDataset(IterableDataset):
         ]
         self.npzfiles = sorted(self.npzfiles)
         if mode == "test":
-            self.npzfiles = self.npzfiles[:3]
+            pass
         else:
+            # self.npzfiles = self.npzfiles[:4]
             random.shuffle(self.npzfiles)
 
         with np.load(SDF_ROOT / dataset / scene / "common.npz") as common:
