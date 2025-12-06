@@ -100,6 +100,7 @@ class InterTSDFDataset(IterableDataset):
                 # npzdataB = np.load(npzfileB)
                 # sdfB = npzdataB["sdf"].astype(np.float32)
                 # sdfB = (sdfB / self.sdf_trunc).clip(-1.0, 1.0)
+                sdfB = sdfBs[i]
                 t = torch.Tensor([(i + 1) / (self.gop - 1)])
                 # d0, h0, w0 = sdf0.shape
                 # dB, hB, wB = sdfB.shape
