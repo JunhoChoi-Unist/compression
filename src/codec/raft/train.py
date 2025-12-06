@@ -84,7 +84,6 @@ if __name__ == "__main__":
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
-    model = torch.nn.DataParallel(model)
     for epoch in range(continue_epoch, EPOCHS):
         epoch_loss = 0.0
         epoch_distortion_loss = 0.0
@@ -113,7 +112,7 @@ if __name__ == "__main__":
             for i, flow in enumerate(flow_predictions):
                 _lmbda = 0.8 ** (len(flow_predictions) - i - 1)
                 # flow = model.interpolate_flow(flow, t)
-                sdf_hat = model.module.warp(sdf_blocks0, flow)
+                sdf_hat = model.warp(sdf_blocks0, flow)
                 distortion_loss += _lmbda * surface_aware_loss(sdf_hat, sdf_blocksB)
                 regularization_loss += _lmbda * flow_regularization_loss(flow)
             distortion_loss = distortion_loss / sum(
@@ -135,13 +134,11 @@ if __name__ == "__main__":
 
         if epoch_loss < best_loss:
             best_loss = epoch_loss
-            save_path = (
-                SAVE_DIR / f"{model.module.__class__.__name__}_ep{epoch:03d}.pth"
-            )
+            save_path = SAVE_DIR / f"{model.__class__.__name__}_ep{epoch:03d}.pth"
             save_path.parent.mkdir(parents=True, exist_ok=True)
             torch.save(
                 {
-                    "model_state_dict": model.module.state_dict(),
+                    "model_state_dict": model.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
                     "epoch": epoch,
                     "loss": epoch_loss,
