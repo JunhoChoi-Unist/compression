@@ -84,11 +84,13 @@ if __name__ == "__main__":
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
+    model = torch.nn.DataParallel(model)
     for epoch in range(continue_epoch, EPOCHS):
         epoch_loss = 0.0
         epoch_distortion_loss = 0.0
         epoch_regularization_loss = 0.0
         flow_init = None
+        model.train()
         for batch_idx, (sdf_blocks, t) in enumerate(tqdm(dataloader, total=1088)):
             sdf_blocks0, sdf_blocksB, sdf_blocks1 = sdf_blocks
             sdf_blocks0 = sdf_blocks0.to(DEVICE)
@@ -137,7 +139,7 @@ if __name__ == "__main__":
             save_path.parent.mkdir(parents=True, exist_ok=True)
             torch.save(
                 {
-                    "model_state_dict": model.state_dict(),
+                    "model_state_dict": model.module.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
                     "epoch": epoch,
                     "loss": epoch_loss,
